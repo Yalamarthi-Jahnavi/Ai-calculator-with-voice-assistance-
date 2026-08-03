@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Calculator with Voice Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .calculator {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .voice-status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .voice-status.listening {
+            background: #d4edda;
+            color: #155724;
+            animation: pulse 1.5s infinite;
+        }
+
+        .voice-status.inactive {
+            background: #f8f9fa;
+            color: #666;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .voice-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .voice-btn.active {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(17, 153, 142, 0.4);
+        }
+
+        .voice-btn.inactive {
+            background: #667eea;
+            color: white;
+        }
+
+        .voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .display {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        .display input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 2em;
+            text-align: right;
+            outline: none;
+            color: #333;
+        }
+
+        .result {
+            margin-top: 10px;
+            font-size: 1.5em;
+            color: #667eea;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 20px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-number {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-number:hover {
+            background: #e9ecef;
+        }
+
+        .btn-operator {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-operator:hover {
+            background: #5568d3;
+        }
+
+        .btn-equals {
+            background: #764ba2;
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn-equals:hover {
+            background: #6a3f91;
+        }
+
+        .btn-clear {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #ee5a5a;
+        }
+
+        .btn-sqrt {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        .btn-sqrt:hover {
+            background: #3dbdb5;
+        }
+
+        .voice-commands {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .voice-commands h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .voice-commands ul {
+            list-style: none;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .voice-commands li {
+            padding: 5px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .voice-commands li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h1>🧮 AI Voice Calculator</h1>
+        
+        <div class="voice-status inactive" id="voiceStatus">
+            Voice Assistant: Inactive
+        </div>
+
+        <button class="voice-btn inactive" id="voiceBtn" onclick="toggleVoice()">
+            🎤 Start Voice Assistant
+        </button>
+
+        <div class="display">
+            <input type="text" id="expression" placeholder="0" readonly>
+            <div class="result" id="result"></div>
+        </div>
+
+        <div class="buttons">
+            <!-- Row 1 -->
+            <button class="btn-clear" onclick="clearDisplay()">C</button>
+            <button class="btn-sqrt" onclick="calculateSqrt()">√</button>
+            <button class="btn-operator" onclick="appendOperator('/')">÷</button>
+            <button class="btn-operator" onclick="appendOperator('*')">×</button>
+
+            <!-- Row 2 -->
+            <button class="btn-number" onclick="appendNumber('7')">7</button>
+            <button class="btn-number" onclick="appendNumber('8')">8</button>
+            <button class="btn-number" onclick="appendNumber('9')">9</button>
+            <button class="btn-operator" onclick="appendOperator('-')">−</button>
+
+            <!-- Row 3 -->
+            <button class="btn-number" onclick="appendNumber('4')">4</button>
+            <button class="btn-number" onclick="appendNumber('5')">5</button>
+            <button class="btn-number" onclick="appendNumber('6')">6</button>
+            <button class="btn-operator" onclick="appendOperator('+')">+</button>
+
+            <!-- Row 4 -->
+            <button class="btn-number" onclick="appendNumber('1')">1</button>
+            <button class="btn-number" onclick="appendNumber('2')">2</button>
+            <button class="btn-number" onclick="appendNumber('3')">3</button>
+            <button class="btn-equals" onclick="calculate()">=</button>
+
+            <!-- Row 5 -->
+            <button class="btn-number" onclick="appendNumber('0')">0</button>
+            <button class="btn-number" onclick="appendNumber('.')">.</button>
+        </div>
+
+        <div class="voice-commands">
+            <h3>🎤 Voice Commands:</h3>
+            <ul>
+                <li>"Add 5 and 3" → 5 + 3</li>
+                <li>"Subtract 10 from 20" → 20 - 10</li>
+                <li>"Multiply 4 by 6" → 4 × 6</li>
+                <li>"Divide 20 by 4" → 20 ÷ 4</li>
+                <li>"Square root of 16" → √16</li>
+                <li>"Clear" → Reset calculator</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentExpression = '';
+        let num1 = '';
+        let num2 = '';
+        let operator = '';
+        let waitingForSecondOperand = false;
+        let recognition = null;
+        let isListening = false;
+
+        function updateDisplay() {
+            document.getElementById('expression').value = currentExpression;
+        }
+
+        function appendNumber(number) {
+            if (waitingForSecondOperand) {
+                num2 = number;
+                waitingForSecondOperand = false;
+            } else {
+                if (operator) {
+                    num2 += number;
+                } else {
+                    num1 += number;
+                }
+            }
+            currentExpression = num1 + (operator || '') + (num2 || '');
+            updateDisplay();
+        }
+
+        function appendOperator(op) {
+            if (operator && !waitingForSecondOperand && num2) {
+                calculate();
+            }
+            operator = op;
+            waitingForSecondOperand = true;
+            currentExpression = num1 + operator;
+            updateDisplay();
+        }
+
+        function clearDisplay() {
+            currentExpression = '';
+            num1 = '';
+            num2 = '';
+            operator = '';
+            waitingForSecondOperand = false;
+            document.getElementById('result').textContent = '';
+            updateDisplay();
+            speak('Calculator cleared');
+        }
+
+        async function calculate() {
+            if (!num1 || !operator) return;
+
+            if (num2 === '') {
+                num2 = num1;
+            }
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        operation: operator === '+' ? 'add' :
+                                   operator === '-' ? 'subtract' :
+                                   operator === '*' ? 'multiply' : 'divide',
+                        num1: parseFloat(num1),
+                        num2: parseFloat(num2)
+                    })
+                });
+
+                const data = await response.json();
+                document.getElementById('result').textContent = '= ' + data.result;
+                speak('Result is ' + data.result);
+                
+                num1 = String(data.result);
+                num2 = '';
+                operator = '';
+                waitingForSecondOperand = true;
+                currentExpression = num1;
+                updateDisplay();
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error';
+                speak('Error in calculation');
+            }
+        }
+
+        async function calculateSqrt() {
+            if (!num1) return;
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        operation: 'sqrt',
+                        num1: parseFloat(num1),
+                        num2: 0
+                    })
+                });
+
+                const data = await response.json();
+                document.getElementById('result').textContent = '√' + num1 + ' = ' + data.result;
+                speak('Square root is ' + data.result);
+                
+                num1 = String(data.result);
+                num2 = '';
+                operator = '';
+                waitingForSecondOperand = true;
+                currentExpression = num1;
+                updateDisplay();
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error';
+                speak('Error');
+            }
+        }
+
+        // Voice Recognition Setup
+        function initVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+                    console.log('Voice input:', transcript);
+                    processVoiceCommand(transcript);
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error === 'no-speech') {
+                        speak('I did not hear anything. Please try again.');
+                    }
+                };
+
+                recognition.onend = () => {
+                    if (isListening) {
+                        recognition.start();
+                    }
+                };
+            } else {
+                alert('Your browser does not support voice recognition. Please use Chrome or Edge.');
+            }
+        }
+
+        function toggleVoice() {
+            const voiceBtn = document.getElementById('voiceBtn');
+            const voiceStatus = document.getElementById('voiceStatus');
+
+            if (!recognition) {
+                initVoiceRecognition();
+            }
+
+            if (!isListening) {
+                recognition.start();
+                isListening = true;
+                voiceBtn.textContent = '🎤 Stop Voice Assistant';
+                voiceBtn.classList.remove('inactive');
+                voiceBtn.classList.add('active');
+                voiceStatus.textContent = 'Voice Assistant: Listening...';
+                voiceStatus.classList.remove('inactive');
+                voiceStatus.classList.add('listening');
+                speak('Voice assistant activated. What would you like to calculate?');
+            } else {
+                recognition.stop();
+                isListening = false;
+                voiceBtn.textContent = '🎤 Start Voice Assistant';
+                voiceBtn.classList.remove('active');
+                voiceBtn.classList.add('inactive');
+                voiceStatus.textContent = 'Voice Assistant: Inactive';
+                voiceStatus.classList.remove('listening');
+                voiceStatus.classList.add('inactive');
+                speak('Voice assistant deactivated.');
+            }
+        }
+
+        function processVoiceCommand(command) {
+            console.log('Processing command:', command);
+
+            // Clear command
+            if (command.includes('clear') || command.includes('reset')) {
+                clearDisplay();
+                return;
+            }
+
+            // Addition: "add 5 and 3", "5 plus 3", "5 + 3"
+            const addMatch = command.match(/(?:add|plus)\s*(-?\d+(?:\.\d+)?)\s*(?:and|to)?\s*(-?\d+(?:\.\d+)?)/i);
+            if (addMatch) {
+                num1 = addMatch[1];
+                num2 = addMatch[2];
+                operator = '+';
+                currentExpression = num1 + ' + ' + num2;
+                updateDisplay();
+                calculate();
+                return;
+            }
+
+            // Subtraction: "subtract 10 from 20", "5 minus 3", "5 - 3"
+            const subMatch = command.match(/(?:subtract|minus)\s*(-?\d+(?:\.\d+)?)\s*(?:from)?\s*(-?\d+(?:\.\d+)?)/i);
+            if (subMatch) {
+                num1 = subMatch[2];
+                num2 = subMatch[1];
+                operator = '-';
+                currentExpression = num1 + ' - ' + num2;
+                updateDisplay();
+                calculate();
+                return;
+            }
+
+            // Multiplication: "multiply 4 by 6", "4 times 6", "4 * 6"
+            const mulMatch = command.match(/(?:multiply|times)\s*(-?\d+(?:\.\d+)?)\s*(?:by)?\s*(-?\d+(?:\.\d+)?)/i);
+            if (mulMatch) {
+                num1 = mulMatch[1];
+                num2 = mulMatch[2];
+                operator = '*';
+                currentExpression = num1 + ' × ' + num2;
+                updateDisplay();
+                calculate();
+                return;
+            }
+
+            // Division: "divide 20 by 4", "20 divided by 4", "20 / 4"
+            const divMatch = command.match(/(?:divide|divided)\s*(-?\d+(?:\.\d+)?)\s*(?:by)?\s*(-?\d+(?:\.\d+)?)/i);
+            if (divMatch) {
+                num1 = divMatch[1];
+                num2 = divMatch[2];
+                operator = '/';
+                currentExpression = num1 + ' ÷ ' + num2;
+                updateDisplay();
+                calculate();
+                return;
+            }
+
+            // Square root: "square root of 16", "sqrt 16"
+            const sqrtMatch = command.match(/(?:square root|sqrt)\s*(?:of)?\s*(-?\d+(?:\.\d+)?)/i);
+            if (sqrtMatch) {
+                num1 = sqrtMatch[1];
+                currentExpression = '√' + num1;
+                updateDisplay();
+                calculateSqrt();
+                return;
+            }
+
+            // Simple numbers: "5", "42", "3.14"
+            const numberMatch = command.match(/^(-?\d+(?:\.\d+)?)$/);
+            if (numberMatch) {
+                num1 = numberMatch[1];
+                currentExpression = num1;
+                updateDisplay();
+                speak('Number entered: ' + num1);
+                return;
+            }
+
+            // Operators: "plus", "minus", "times", "divide"
+            if (command.includes('plus')) {
+                appendOperator('+');
+                speak('Addition');
+            } else if (command.includes('minus')) {
+                appendOperator('-');
+                speak('Subtraction');
+            } else if (command.includes('times') || command.includes('multiply')) {
+                appendOperator('*');
+                speak('Multiplication');
+            } else if (command.includes('divide')) {
+                appendOperator('/');
+                speak('Division');
+            }
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initVoiceRecognition();
+            speak('Welcome to AI Voice Calculator');
+        });
+    </script>
+</body>
+</html>
